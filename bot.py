@@ -108,6 +108,80 @@ def main_simple():
             time.sleep(5)
 
 if __name__ == "__main__":
+    main_simple()        "text": text,
+        "parse_mode": "HTML"
+    }
+    try:
+        response = requests.post(url, data=data, timeout=10)
+        return response.json()
+    except:
+        return None
+
+def get_updates(offset=None):
+    url = f"{BASE_URL}/getUpdates"
+    data = {"timeout": 10}
+    if offset:
+        data["offset"] = offset
+    try:
+        response = requests.post(url, data=data, timeout=15)
+        return response.json()
+    except:
+        return None
+
+# ... (aquí irían las mismas funciones CSV del script anterior)
+
+def process_message(update):
+    if "message" not in update:
+        return
+    
+    message = update["message"]
+    chat_id = message["chat"]["id"]
+    text = message.get("text", "")
+    
+    if text.startswith("/start"):
+        send_message(chat_id, "🤖 <b>Bot funcionando en iSH</b>\n\nUsa /login contraseña")
+    
+    elif text.startswith("/login"):
+        parts = text.split()
+        if len(parts) == 2 and parts[1] in VALID_PASSWORDS:
+            SESSIONS[chat_id] = True
+            send_message(chat_id, "✅ <b>Autenticado</b>\nUsa /menu")
+        else:
+            send_message(chat_id, "❌ Contraseña incorrecta")
+    
+    elif text == "/menu" and chat_id in SESSIONS:
+        keyboard = {
+            "inline_keyboard": [
+                [{"text": "🎁 Obtener cuenta", "callback_data": "get"}],
+                [{"text": "➕ Agregar cuenta", "callback_data": "add"}]
+            ]
+        }
+        url = f"{BASE_URL}/sendMessage"
+        data = {
+            "chat_id": chat_id,
+            "text": "📋 <b>Menú principal</b>",
+            "reply_markup": json.dumps(keyboard),
+            "parse_mode": "HTML"
+        }
+        requests.post(url, data=data)
+
+def main_simple():
+    print("🚀 Iniciando bot simple para iSH...")
+    setup_files()
+    last_update_id = None
+    
+    while True:
+        try:
+            updates = get_updates(last_update_id)
+            if updates and "result" in updates:
+                for update in updates["result"]:
+                    last_update_id = update["update_id"] + 1
+                    process_message(update)
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(5)
+
+if __name__ == "__main__":
     main_simple()# Token del bot - REEMPLAZA CON TU TOKEN REAL
 TOKEN = "8209038816:AAFD6k0wVXX2os1GITLGa2rUUrvZgVvbZHA"
 # -----------------------------------
